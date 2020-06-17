@@ -31,6 +31,18 @@ p = ggplot(data = dt, aes(x=x, y=y, colour=cluster)) +
   geom_polygon(data = hulls,aes(fill=cluster,alpha = 0.5)) +
   guides(alpha=F)
 
+# Estimate clusters (e.g. kmeans):
+dt[,km_cluster := as.factor(kmeans(.SD,5)$cluster),.SDcols=c("x","y")]
+
+# Find convex hull of each point:
+hulls = dt[,.SD[chull(x,y)],by=.(km_cluster)]
+
+# Plot:
+p = ggplot(data = dt, aes(x=x, y=y, colour=km_cluster)) +
+  geom_point() +
+  geom_polygon(data = hulls,aes(fill=km_cluster,alpha = 0.5)) +
+  guides(alpha=F)
+
 
 
 
