@@ -17,11 +17,15 @@ shinyApp(
     ),
     
     mainPanel(
+      h3("Custom style table:"),
       tags$div(
         class="my_table", # set to custom class
-        tableOutput("retail_dashboard_ratios_table")
+        tableOutput("custom_table")
       ),
-      tableOutput("another_table")
+      h3("Default style table:"),
+      tableOutput("default_table"), # No class assigned
+      h3("Another default style table:"),
+      tableOutput("another_default_table") # No class assigned
     )
     
   ),
@@ -29,12 +33,16 @@ shinyApp(
   # --- Server logic --- #
   
   server = function(input, output) {
-    output$retail_dashboard_ratios_table <- renderTable({  #
+    output$custom_table <- renderTable({  #
       df <- head(mtcars)
     })
     
-    output$another_table <- renderTable({  #
+    output$default_table <- renderTable({  #
       df <- head(iris)
+    })
+    
+    output$another_default_table <- renderTable({  #
+      df <- head(cars)
     })
   }
   
