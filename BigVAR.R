@@ -6,6 +6,7 @@ data(Y)
 
 p = 4 # lags
 k = ncol(Y) # number of equations
+N = nrow(Y) - p # number of obs.
 
 # Create a Basic VAR-L (Lasso Penalty) with maximum lag order p=4, 10 gridpoints with lambda optimized according to rolling validation of 1-step ahead MSFE
 mod1 = constructModel(Y,p,"Basic",gran=c(150,10),RVAR=FALSE,h=1,cv="Rolling",MN=FALSE,verbose=FALSE,IC=TRUE)
@@ -13,7 +14,7 @@ results = cv.BigVAR(mod1)
 
 # Get model estimates
 A = results@betaPred[,2:ncol(results@betaPred)] # (k x (k*p)) = (3 x (3*4)) coefficient matrix (reduced form)
-Sigma = cov(results@resids)
+Sigma = crossprod(resid(varres))/(N-(k*p)-1)
 
 # A number of helper functions ----
 # Compute reduced-form IRFs:
@@ -120,3 +121,35 @@ p = ggplot(data=fevd_res) +
   ) +
   theme_bw()
 p
+
+
+# Compare to vars package ----
+library(vars)
+
+p = 4 # lags
+k = ncol(Y) # number of equations
+N = nrow(Y) - p
+colnames(Y) = sprintf("V%i", 1:ncol(Y))
+n.ahead = 20
+
+varres = vars::VAR(Y,p) # reduced-form model using package command; vars:: to make clear that pkg
+
+# Get estimates for custom fevd function:
+Sigma = crossprod(resid(varres))/(N-(k*p)-1)
+A = t(
+  sapply(coef(varres), function(i) {
+    i[,1]
+  })
+)
+A = A[,1:(ncol(A)-1)]
+
+# Run the two different functions:
+fevd_pkg = vars::fevd(varres, n.ahead)
+fevd_cus = fevd(A, Sigma, n.ahead)
+
+# Now to verify, compare results for V1 ----
+# Package:
+head(fevd_pkg$V1)
+# Custom:
+head(dcast(fevd_cus[k=="V1"], k+h~j, value.var = "value"))
+
