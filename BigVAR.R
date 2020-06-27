@@ -1,5 +1,6 @@
 library(BigVAR)
 library(expm)
+library(data.table)
 
 # Create model
 data(Y)
@@ -68,7 +69,7 @@ fevd = function(A, Sigma, n.ahead) {
   if (p>1) {
     A_comp = VarptoVar1MC(A,p,k) 
   } else {
-    A_comp = Phi
+    A_comp = A
   }
   
   # Compute MSPE: ----
@@ -153,3 +154,41 @@ head(fevd_pkg$V1)
 # Custom:
 head(dcast(fevd_cus[k=="V1"], k+h~j, value.var = "value"))
 
+# Generalized FEVD ----
+library(frequencyConnectedness)
+
+genFEVD_cus = function(
+  A, 
+  Sigma, 
+  n.ahead, 
+  no.corr=F
+) {
+  
+  k = dim(A)[1] # number of equations
+  p = dim(A)[2]/k # number of lags
+  
+  # Turn into companion form:
+  if (p>1) {
+    A_comp = BigVAR::VarptoVar1MC(A,p,k) 
+  } else {
+    A_comp = A
+  }
+  
+  # Set off-diagonals to zero:
+  if (no.corr) {
+    Sigma = diag(diag(Sigma))
+  }
+  
+  Phi = compute_Phi(p,k,A_comp,n.ahead+1) # Reduced-form irfs
+  
+  denom = diag(Reduce("+", lapply(Phi, function(i) i %*% Sigma %*% 
+                                    t(i))))
+  enum = Reduce("+", lapply(Phi, function(i) (i %*% Sigma)^2))
+  tab = sapply(1:nrow(enum), function(j) enum[j, ]/(denom[j] * 
+                                                      diag(Sigma)))
+  tab = t(apply(tab, 2, function(i) i/sum(i)))
+  
+  return(tab)
+}
+frequencyConnectedness::genFEVD(varres, n.ahead)
+genFEVD_cus(A, Sigma, n.ahead)
